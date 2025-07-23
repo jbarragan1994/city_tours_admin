@@ -5,7 +5,7 @@ import { CNavItem } from '@coreui/react'
 const _nav = [
   {
     component: CNavItem,
-    name: 'Lugares',
+    name: 'Places',
     to: '/places',
     icon: <CIcon icon={cilLocationPin} customClassName="nav-icon" />,
   },
