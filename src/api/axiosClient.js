@@ -1,7 +1,8 @@
 import axios from 'axios'
 
 const axiosClient = axios.create({
-  baseURL: 'https://687925b663f24f1fdca111ca.mockapi.io/api',
+  // baseURL: 'https://687925b663f24f1fdca111ca.mockapi.io/api',
+  baseURL: 'https://tourist.land/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -10,7 +11,7 @@ const axiosClient = axios.create({
 // Interceptor para agregar token y manejar Content-Type dinámicamente
 axiosClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('authToken')
+    const token = localStorage.getItem('token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -36,8 +37,10 @@ axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('authToken')
-      window.location.href = '/login'
+      localStorage.removeItem('token')
+      // window.location.href = '/login'
+      window.location.href =
+        'https://auth.tourist.land/login?client_id=45rjcsjmkcv2624ev0219g1f2q&response_type=code&scope=email+openid+phone&redirect_uri=http://localhost:3000/api/auth'
     }
     return Promise.reject(error)
   },

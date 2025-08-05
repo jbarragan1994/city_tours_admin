@@ -14,7 +14,7 @@ import {
   CBadge,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilPlus, cilImage, cilPencil, cilTrash, cilCheck } from '@coreui/icons'
+import { cilPlus, cilPencil, cilTrash, cilCheck } from '@coreui/icons'
 import NewPlace from './NewPlace'
 import placesApi from '../../api/endpoints/placesApi'
 import ConfirmDeleteModal from '../../components/ConfirmDeleteModal'
@@ -51,12 +51,16 @@ const Places = () => {
         await placesApi.deletePlace(placeToDelete.id)
         setShowDeleteModal(false)
         setPlaceToDelete(null)
-        setAlert({ visible: true, message: 'Lugar eliminado correctamente', color: 'success' })
+        setAlert({ visible: true, message: 'Place deleted successfully', color: 'success' })
         fetchData()
-      } catch (err) {
+      } catch ({ response }) {
         setShowDeleteModal(false)
         setPlaceToDelete(null)
-        setAlert({ visible: true, message: 'Error al eliminar el lugar', color: 'danger' })
+        setAlert({
+          visible: true,
+          message: response?.data?.message || 'Error al eliminar el lugar',
+          color: 'danger',
+        })
       }
     }
   }
@@ -69,11 +73,15 @@ const Places = () => {
   const handleApprove = async (place) => {
     const status = place.published ? false : true
     try {
-      await placesApi.publishPlace(place.id, status)
-      setAlert({ visible: true, message: 'Lugar aprobado correctamente', color: 'success' })
+      const { data } = await placesApi.publishPlace(place.id, status)
+      setAlert({ visible: true, message: data.message, color: 'success' })
       fetchData()
-    } catch (err) {
-      setAlert({ visible: true, message: 'Error al aprobar el lugar', color: 'danger' })
+    } catch ({ response }) {
+      setAlert({
+        visible: true,
+        message: response?.data?.message || 'Error al eliminar el lugar',
+        color: 'danger',
+      })
     }
   }
 
@@ -89,7 +97,7 @@ const Places = () => {
         </CCol>
         <CCol className="text-end">
           <CButton color="primary" onClick={() => setIsVisibleNewPlace(!isVisibleNewPlace)}>
-            <CIcon icon={cilPlus} /> New Place
+            <CIcon icon={cilPlus} className="me-2" /> New Place
           </CButton>
         </CCol>
       </CRow>
@@ -101,8 +109,6 @@ const Places = () => {
                 <CTableHead className="text-center">
                   <CTableRow>
                     <CTableHeaderCell>Image</CTableHeaderCell>
-                    <CTableHeaderCell>Place ID</CTableHeaderCell>
-                    <CTableHeaderCell>Tour ID</CTableHeaderCell>
                     <CTableHeaderCell>Name</CTableHeaderCell>
                     <CTableHeaderCell>Languages</CTableHeaderCell>
                     <CTableHeaderCell>Coords</CTableHeaderCell>
@@ -115,20 +121,18 @@ const Places = () => {
                     return (
                       <CTableRow key={place.id}>
                         <CTableDataCell>
-                          <CIcon icon={cilImage} size="lg" />
-                        </CTableDataCell>
-                        <CTableDataCell>{place.id ? place.id.split('-').pop() : ''}</CTableDataCell>
-                        <CTableDataCell>
-                          {place.tour_id ? place.tour_id.split('-').pop() : ''}
+                          <img
+                            src={place.thumbnail}
+                            alt={place.content[0]?.name}
+                            style={{ maxWidth: '50px', borderRadius: '4px' }}
+                          />
                         </CTableDataCell>
                         <CTableDataCell>{place.content[0]?.name}</CTableDataCell>
                         <CTableDataCell>
-                          {place.content.map((entry) => (
-                            <div key={entry.lang}>{entry.lang}</div>
-                          ))}
+                          {place.content.map((entry) => entry.lang).join(', ')}
                         </CTableDataCell>
                         <CTableDataCell>
-                          {place.lat} | {place.lon}
+                          {place.lat},{place.lon}
                         </CTableDataCell>
                         <CTableDataCell>
                           <CBadge color={place.published ? 'success' : 'secondary'}>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   CButton,
   CCol,
@@ -17,11 +17,12 @@ import {
 } from '@coreui/react'
 
 import CIcon from '@coreui/icons-react'
-import { cilTrash, cilPlus, cilSave, cilXCircle } from '@coreui/icons'
+import { cilTrash, cilPlus, cilSave, cilXCircle, cilMediaPlay, cilMediaPause } from '@coreui/icons'
 import placesApi from '../../api/endpoints/placesApi'
+import taxonomyApi from '../../api/endpoints/taxonomyApi'
 import AlertMessage from '../../components/AlertMessage'
 
-const initialForm = {
+let initialForm = {
   content: [
     {
       lang: '',
@@ -40,19 +41,49 @@ const NewPlace = ({ visible, onClose, onSaved, isEdit, data = {} }) => {
   const [imagePreview, setImagePreview] = useState([])
   const [isSaving, setIsSaving] = useState(false)
   const [alert, setAlert] = useState({ visible: false, message: '', color: 'success' })
+  const [formErrors, setFormErrors] = useState({})
+  const [taxonomies, setTaxonomies] = useState([])
+  const [activeAudioIndex, setActiveAudioIndex] = useState(null)
+  const audioRef = useRef(null)
+
+  const isSaveDisabled =
+    form.images.length === 0 ||
+    form.content.some((entry) => !entry.lang || !entry.name || !entry.text) ||
+    !form.lat ||
+    !form.lon
 
   useEffect(() => {
     if (isEdit && data) {
       setForm({
         id: data.id || '',
-        content: data.content || initialForm.content,
-        images: [],
+        content: data.content || [],
+        images: data.images || [],
         lat: data.lat || '',
         lon: data.lon || '',
         published: data.published || false,
       })
+      setImagePreview(data.images)
     }
   }, [isEdit, data])
+
+  useEffect(() => {
+    if (visible) {
+      const fetchTaxonomies = async () => {
+        try {
+          const { data } = await taxonomyApi.getAllTaxonomies()
+          setTaxonomies(data.languages || [])
+        } catch ({ response }) {
+          setAlert({
+            visible: true,
+            message: response?.data?.message || 'Error al obtener las taxonomías',
+            color: 'danger',
+          })
+        }
+      }
+
+      fetchTaxonomies()
+    }
+  }, [visible])
 
   const handleChange = (e, index = null, field = null) => {
     const { name, value, type, checked } = e.target
@@ -84,19 +115,87 @@ const NewPlace = ({ visible, onClose, onSaved, isEdit, data = {} }) => {
 
   const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files)
+
     const base64Images = await Promise.all(
       files.map(
         (file) =>
           new Promise((resolve, reject) => {
             const reader = new FileReader()
-            reader.onload = () => resolve(reader.result.split(',')[1])
+            reader.onload = () => {
+              const base64Data = reader.result.split(',')[1]
+              resolve({
+                data: base64Data,
+                mime_type: file.type,
+              })
+            }
             reader.onerror = reject
             reader.readAsDataURL(file)
           }),
       ),
     )
-    setForm((prev) => ({ ...prev, images: base64Images }))
-    setImagePreview(files.map((file) => URL.createObjectURL(file)))
+
+    try {
+      const uploadResults = await Promise.all(
+        base64Images.map((item) => placesApi.uploadPlaceImages(item)),
+      )
+
+      const newUploadedImages = uploadResults.map((res) => res.data.file)
+
+      setForm((prev) => ({
+        ...prev,
+        images: [...prev.images, ...newUploadedImages],
+      }))
+
+      setImagePreview((prev) => [...prev, ...files.map((file) => URL.createObjectURL(file))])
+    } catch (error) {
+      setAlert({
+        visible: true,
+        message: 'Error uploading images',
+        color: 'danger',
+      })
+    }
+  }
+
+  const deleteImage = (index) => {
+    setForm((prevForm) => ({
+      ...prevForm,
+      images: prevForm.images.filter((_, i) => i !== index),
+    }))
+
+    setImagePreview((prevPreview) => prevPreview.filter((_, i) => i !== index))
+  }
+
+  const playAudio = (link) => {
+    const audio = new Audio(link)
+    audio.play()
+  }
+
+  const toggleAudio = (audioUrl, index) => {
+    // Si se está reproduciendo el mismo audio, detenerlo
+    if (audioRef.current && activeAudioIndex === index) {
+      audioRef.current.pause()
+      audioRef.current.currentTime = 0
+      audioRef.current = null
+      setActiveAudioIndex(null)
+      return
+    }
+
+    // Si hay otro audio sonando, detenerlo
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.currentTime = 0
+    }
+
+    // Reproducir el nuevo audio
+    const newAudio = new Audio(audioUrl)
+    audioRef.current = newAudio
+    setActiveAudioIndex(index)
+
+    newAudio.play()
+    newAudio.onended = () => {
+      setActiveAudioIndex(null)
+      audioRef.current = null
+    }
   }
 
   const handleClose = () => {
@@ -108,18 +207,23 @@ const NewPlace = ({ visible, onClose, onSaved, isEdit, data = {} }) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsSaving(true)
-
     try {
       await placesApi.savePlace({
         ...form,
+        lat: Number(form.lat),
+        lon: Number(form.lon),
       })
       onSaved()
       setForm(initialForm)
       setImagePreview([])
-      setAlert({ visible: true, message: 'Lugar guardado correctamente', color: 'success' })
-    } catch (error) {
-      handleClose()
-      setAlert({ visible: true, message: 'Error al guardar el lugar', color: 'danger' })
+      setAlert({ visible: true, message: 'Place saved successfully', color: 'success' })
+    } catch ({ response }) {
+      // handleClose()
+      setAlert({
+        visible: true,
+        message: response?.data?.message || 'Error al guardar el lugar',
+        color: 'danger',
+      })
     } finally {
       setIsSaving(false)
     }
@@ -135,7 +239,6 @@ const NewPlace = ({ visible, onClose, onSaved, isEdit, data = {} }) => {
           <CForm onSubmit={handleSubmit}>
             <CRow>
               <h5>Place</h5>
-
               <CCol md={6}>
                 <div className="mb-3">
                   <CFormLabel>Latitude</CFormLabel>
@@ -145,6 +248,8 @@ const NewPlace = ({ visible, onClose, onSaved, isEdit, data = {} }) => {
                     name="lat"
                     value={form.lat}
                     onChange={handleChange}
+                    invalid={!!formErrors.lat}
+                    feedback={formErrors.lat}
                   />
                 </div>
               </CCol>
@@ -176,8 +281,11 @@ const NewPlace = ({ visible, onClose, onSaved, isEdit, data = {} }) => {
                             onChange={(e) => handleChange(e, index, 'lang')}
                           >
                             <option value="">Select a language</option>
-                            <option value="en">English</option>
-                            <option value="es">Spanish</option>
+                            {taxonomies.map((taxonomy) => (
+                              <option key={taxonomy.code} value={taxonomy.code}>
+                                {taxonomy.name}
+                              </option>
+                            ))}
                           </CFormSelect>
                         </div>
                       </CCol>
@@ -195,6 +303,15 @@ const NewPlace = ({ visible, onClose, onSaved, isEdit, data = {} }) => {
                       <CCol md={12}>
                         <div className="mb-2">
                           <CFormLabel>Text</CFormLabel>
+                          {entry.audio && (
+                            <CIcon
+                              onClick={() => toggleAudio(entry.audio, index)}
+                              icon={activeAudioIndex === index ? cilMediaPause : cilMediaPlay}
+                              size="md"
+                              color={activeAudioIndex === index ? 'danger' : 'success'}
+                              style={{ cursor: 'pointer', marginLeft: '5px' }}
+                            />
+                          )}
                           <CFormTextarea
                             value={entry.text}
                             onChange={(e) => handleChange(e, index, 'text')}
@@ -231,12 +348,19 @@ const NewPlace = ({ visible, onClose, onSaved, isEdit, data = {} }) => {
                   {imagePreview.length > 0 && (
                     <div className="mt-3 d-flex flex-wrap gap-2">
                       {imagePreview.map((src, idx) => (
-                        <img
-                          key={idx}
-                          src={src}
-                          alt={`preview-${idx}`}
-                          style={{ width: '100px', height: '100px', objectFit: 'cover' }}
-                        />
+                        <>
+                          <img
+                            key={idx}
+                            src={src}
+                            alt={`preview-${idx}`}
+                            style={{ width: '100px', height: '100px', objectFit: 'cover' }}
+                          />
+                          <CIcon
+                            onClick={() => deleteImage(idx)}
+                            icon={cilXCircle}
+                            className="icon-cancel"
+                          />
+                        </>
                       ))}
                     </div>
                   )}
@@ -258,7 +382,12 @@ const NewPlace = ({ visible, onClose, onSaved, isEdit, data = {} }) => {
           </CForm>
         </CModalBody>
         <CModalFooter>
-          <CButton color="primary" type="submit" onClick={handleSubmit} disabled={isSaving}>
+          <CButton
+            color="primary"
+            type="submit"
+            onClick={handleSubmit}
+            disabled={isSaving || isSaveDisabled}
+          >
             <CIcon icon={cilSave} className="text-white me-2" />
             {isSaving ? 'Saving...' : 'Save'}
           </CButton>

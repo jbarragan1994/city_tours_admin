@@ -70,6 +70,7 @@ body {
   position: absolute;
   bottom: 35px;
   right: 25px;
+  z-index: 2000;
 }
 
 :root {
@@ -88,4 +89,15 @@ body {
 .btn-primary {
   background-color: var(--btn-primary) !important;
   border-color: var(--btn-primary) !important;
+}
+
+.modal-body {
+  padding: 1rem 2rem !important;
+}
+
+.icon-cancel {
+  position: relative;
+  left: -10px;
+  bottom: 10px;
+  cursor: pointer;
 }
