@@ -1,14 +1,14 @@
 import axios from 'axios'
+import { getAuthUrl } from '../utils/auth'
 
+const baseURL = import.meta.env.VITE_BACKEND_URL
 const axiosClient = axios.create({
-  // baseURL: 'https://687925b663f24f1fdca111ca.mockapi.io/api',
-  baseURL: 'https://tourist.land/api',
+  baseURL,
   headers: {
     'Content-Type': 'application/json',
   },
 })
 
-// Interceptor para agregar token y manejar Content-Type dinámicamente
 axiosClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
@@ -38,9 +38,8 @@ axiosClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
-      // window.location.href = '/login'
-      window.location.href =
-        'https://auth.tourist.land/login?client_id=45rjcsjmkcv2624ev0219g1f2q&response_type=code&scope=email+openid+phone&redirect_uri=http://localhost:3000/api/auth'
+      const url = getAuthUrl()
+      window.location.href = url
     }
     return Promise.reject(error)
   },

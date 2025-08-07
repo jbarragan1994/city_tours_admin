@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
-import { useNavigate } from 'react-router-dom'
 import {
   CContainer,
   CDropdown,
@@ -14,12 +13,11 @@ import {
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilContrast, cilMenu, cilMoon, cilSun, cilExitToApp } from '@coreui/icons'
-
 import { AppBreadcrumb } from './index'
+import { getAuthUrl } from '../utils/auth'
 
 const AppHeader = () => {
   const headerRef = useRef()
-  const navigate = useNavigate()
   const { colorMode, setColorMode } = useColorModes('coreui-free-react-admin-template-theme')
 
   const dispatch = useDispatch()
@@ -27,7 +25,8 @@ const AppHeader = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('authToken')
-    navigate('/login')
+    const url = getAuthUrl()
+    window.location.href = url
   }
 
   useEffect(() => {

@@ -96,8 +96,8 @@ body {
 }
 
 .icon-cancel {
-  position: relative;
-  left: -10px;
-  bottom: 10px;
+  position: absolute;
+  margin-left: 100px;
+  margin-top: -5px;
   cursor: pointer;
 }

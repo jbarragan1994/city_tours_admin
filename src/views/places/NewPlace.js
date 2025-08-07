@@ -17,10 +17,11 @@ import {
 } from '@coreui/react'
 
 import CIcon from '@coreui/icons-react'
-import { cilTrash, cilPlus, cilSave, cilXCircle, cilMediaPlay, cilMediaPause } from '@coreui/icons'
+import { cilTrash, cilPlus, cilSave, cilXCircle } from '@coreui/icons'
 import placesApi from '../../api/endpoints/placesApi'
 import taxonomyApi from '../../api/endpoints/taxonomyApi'
 import AlertMessage from '../../components/AlertMessage'
+import DragAndDropImages from './DragAndDropImages'
 
 let initialForm = {
   content: [
@@ -43,8 +44,6 @@ const NewPlace = ({ visible, onClose, onSaved, isEdit, data = {} }) => {
   const [alert, setAlert] = useState({ visible: false, message: '', color: 'success' })
   const [formErrors, setFormErrors] = useState({})
   const [taxonomies, setTaxonomies] = useState([])
-  const [activeAudioIndex, setActiveAudioIndex] = useState(null)
-  const audioRef = useRef(null)
 
   const isSaveDisabled =
     form.images.length === 0 ||
@@ -53,7 +52,7 @@ const NewPlace = ({ visible, onClose, onSaved, isEdit, data = {} }) => {
     !form.lon
 
   useEffect(() => {
-    if (isEdit && data) {
+    if (visible && isEdit && data) {
       setForm({
         id: data.id || '',
         content: data.content || [],
@@ -64,7 +63,7 @@ const NewPlace = ({ visible, onClose, onSaved, isEdit, data = {} }) => {
       })
       setImagePreview(data.images)
     }
-  }, [isEdit, data])
+  }, [visible])
 
   useEffect(() => {
     if (visible) {
@@ -165,37 +164,11 @@ const NewPlace = ({ visible, onClose, onSaved, isEdit, data = {} }) => {
     setImagePreview((prevPreview) => prevPreview.filter((_, i) => i !== index))
   }
 
-  const playAudio = (link) => {
-    const audio = new Audio(link)
-    audio.play()
-  }
-
-  const toggleAudio = (audioUrl, index) => {
-    // Si se está reproduciendo el mismo audio, detenerlo
-    if (audioRef.current && activeAudioIndex === index) {
-      audioRef.current.pause()
-      audioRef.current.currentTime = 0
-      audioRef.current = null
-      setActiveAudioIndex(null)
-      return
-    }
-
-    // Si hay otro audio sonando, detenerlo
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current.currentTime = 0
-    }
-
-    // Reproducir el nuevo audio
-    const newAudio = new Audio(audioUrl)
-    audioRef.current = newAudio
-    setActiveAudioIndex(index)
-
-    newAudio.play()
-    newAudio.onended = () => {
-      setActiveAudioIndex(null)
-      audioRef.current = null
-    }
+  const handleOrderImages = (images) => {
+    setForm((prev) => ({
+      ...prev,
+      images,
+    }))
   }
 
   const handleClose = () => {
@@ -236,7 +209,7 @@ const NewPlace = ({ visible, onClose, onSaved, isEdit, data = {} }) => {
           <CModalTitle>{isEdit ? 'Edit Place' : 'New Place'}</CModalTitle>
         </CModalHeader>
         <CModalBody>
-          <CForm onSubmit={handleSubmit}>
+          <CForm>
             <CRow>
               <h5>Place</h5>
               <CCol md={6}>
@@ -303,15 +276,6 @@ const NewPlace = ({ visible, onClose, onSaved, isEdit, data = {} }) => {
                       <CCol md={12}>
                         <div className="mb-2">
                           <CFormLabel>Text</CFormLabel>
-                          {entry.audio && (
-                            <CIcon
-                              onClick={() => toggleAudio(entry.audio, index)}
-                              icon={activeAudioIndex === index ? cilMediaPause : cilMediaPlay}
-                              size="md"
-                              color={activeAudioIndex === index ? 'danger' : 'success'}
-                              style={{ cursor: 'pointer', marginLeft: '5px' }}
-                            />
-                          )}
                           <CFormTextarea
                             value={entry.text}
                             onChange={(e) => handleChange(e, index, 'text')}
@@ -319,6 +283,15 @@ const NewPlace = ({ visible, onClose, onSaved, isEdit, data = {} }) => {
                             placeholder="Descriptive text"
                           />
                         </div>
+                      </CCol>
+                      <CCol md={12}>
+                        {entry.audio && (
+                          <>
+                            <audio controls>
+                              <source src={entry.audio} type="audio/ogg"></source>
+                            </audio>
+                          </>
+                        )}
                       </CCol>
                       <CCol md={12}>
                         {form.content.length > 1 && (
@@ -346,23 +319,11 @@ const NewPlace = ({ visible, onClose, onSaved, isEdit, data = {} }) => {
                   <h5>Images</h5>
                   <CFormInput type="file" accept="image/*" multiple onChange={handleImageUpload} />
                   {imagePreview.length > 0 && (
-                    <div className="mt-3 d-flex flex-wrap gap-2">
-                      {imagePreview.map((src, idx) => (
-                        <>
-                          <img
-                            key={idx}
-                            src={src}
-                            alt={`preview-${idx}`}
-                            style={{ width: '100px', height: '100px', objectFit: 'cover' }}
-                          />
-                          <CIcon
-                            onClick={() => deleteImage(idx)}
-                            icon={cilXCircle}
-                            className="icon-cancel"
-                          />
-                        </>
-                      ))}
-                    </div>
+                    <DragAndDropImages
+                      imagesData={imagePreview}
+                      onDeleteImage={deleteImage}
+                      onOrderChange={handleOrderImages}
+                    />
                   )}
                 </div>
               </CCol>

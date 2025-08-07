@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import axiosClient from '../../api/axiosClient'
 
 function AuthHandler() {
   const location = useLocation()
@@ -9,9 +10,10 @@ function AuthHandler() {
     const params = new URLSearchParams(location.search)
     const code = params.get('code')
     const callback = 'http://localhost:3000/api/auth'
+    const backendURL = import.meta.env.VITE_BACKEND_URL
 
     if (code) {
-      fetch(`https://tourist.land/api/auth?code=${code}&callback=${callback}`, {
+      fetch(`${backendURL}/auth?code=${code}&callback=${callback}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -23,11 +25,11 @@ function AuthHandler() {
         })
         .then(({ access_token }) => {
           localStorage.setItem('token', access_token)
+          axiosClient.get('/user', access_token)
           navigate('/places')
         })
         .catch((error) => {
           console.error('Error:', error)
-          // navigate('/login')
         })
     }
   }, [location, navigate])
