@@ -2,7 +2,7 @@ export function getAuthUrl() {
   const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
 
   const backendURL = import.meta.env.VITE_BACKEND_URL
-  const redirectUri = isLocalhost ? 'http://localhost:3000/api/auth' : backendURL + '/auth'
+  const redirectUri = isLocalhost ? 'http://localhost:3000/auth' : backendURL + '/auth'
 
   const baseUrl = 'https://auth.tourist.land/login'
   const params = new URLSearchParams({
