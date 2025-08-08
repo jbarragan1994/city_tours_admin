@@ -48,7 +48,7 @@ const App = () => {
           <Route exact path="/login" name="Login Page" element={<Login />} />
           <Route exact path="/404" name="Page 404" element={<Page404 />} />
           <Route exact path="/500" name="Page 500" element={<Page500 />} />
-          <Route path="/api/auth" element={<AuthHandler />} />
+          <Route path="/auth" element={<AuthHandler />} />
           <Route path="*" name="Home" element={<DefaultLayout />} />
         </Routes>
       </Suspense>

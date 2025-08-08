@@ -9,9 +9,9 @@ function AuthHandler() {
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     const code = params.get('code')
-    const callback = 'http://localhost:3000/api/auth'
+    const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+    const callback = isLocalhost ? 'http://localhost:3000/auth' : 'https://tourist.land/auth'
     const backendURL = import.meta.env.VITE_BACKEND_URL
-
     if (code) {
       fetch(`${backendURL}/auth?code=${code}&callback=${callback}`, {
         method: 'GET',
